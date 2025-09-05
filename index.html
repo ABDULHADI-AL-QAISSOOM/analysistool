@@ -49,13 +49,21 @@
             margin-top: 20px;
             color: #333;
         }
-        pre {
-            background-color: #f8f9fa;
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
             border: 1px solid #ddd;
-            padding: 10px;
-            border-radius: 4px;
-            white-space: pre-wrap;
-            word-wrap: break-word;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .results {
+            display: none;
         }
     </style>
 </head>
@@ -71,8 +79,31 @@
         
         <button id="analyzeButton">Analyze</button>
         
-        <h3>Results</h3>
-        <pre id="results"></pre>
+        <div class="results">
+            <h3>Results</h3>
+            <h4>Matched Entries</h4>
+            <table id="matchedResults">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Evaluation</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <h4>Unmatched Entries</h4>
+            <table id="unmatchedResults">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Evaluation</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
@@ -80,10 +111,12 @@
         document.getElementById('analyzeButton').addEventListener('click', async () => {
             const masterFile = document.getElementById('masterSheet').files[0];
             const comparisonFile = document.getElementById('comparisonSheet').files[0];
-            const resultsElement = document.getElementById('results');
+            const matchedResultsElement = document.getElementById('matchedResults').querySelector('tbody');
+            const unmatchedResultsElement = document.getElementById('unmatchedResults').querySelector('tbody');
+            const resultsContainer = document.querySelector('.results');
 
             if (!masterFile || !comparisonFile) {
-                resultsElement.textContent = "Please upload both files.";
+                alert("Please upload both files.");
                 return;
             }
 
@@ -91,7 +124,8 @@
             const comparisonData = await readExcelFile(comparisonFile);
 
             const analysisResults = analyzeData(masterData, comparisonData);
-            resultsElement.textContent = JSON.stringify(analysisResults, null, 2);
+            displayResults(analysisResults, matchedResultsElement, unmatchedResultsElement);
+            resultsContainer.style.display = 'block';
         });
 
         async function readExcelFile(file) {
@@ -123,6 +157,28 @@
             });
 
             return results;
+        }
+
+        function displayResults(results, matchedResultsElement, unmatchedResultsElement) {
+            // Clear previous results
+            matchedResultsElement.innerHTML = '';
+            unmatchedResultsElement.innerHTML = '';
+
+            // Display matched results
+            results.matched.forEach(item => {
+                const row = matchedResultsElement.insertRow();
+                row.insertCell(0).textContent = item.ID;
+                row.insertCell(1).textContent = item.Name;
+                row.insertCell(2).textContent = item['Evaluation ']; // Note: Adjust the key if needed
+            });
+
+            // Display unmatched results
+            results.unmatched.forEach(item => {
+                const row = unmatchedResultsElement.insertRow();
+                row.insertCell(0).textContent = item.ID;
+                row.insertCell(1).textContent = item.Name;
+                row.insertCell(2).textContent = item['Evaluation ']; // Note: Adjust the key if needed
+            });
         }
     </script>
 </body>
