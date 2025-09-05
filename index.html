@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Analysis Tool</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        h3 {
+            margin-top: 20px;
+            color: #333;
+        }
+        pre {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <h1>Excel Analysis Tool</h1>
+    <div class="container">
+        <h2>Upload Sheets</h2>
+        <label for="masterSheet">Master Sheet (Complete Data)</label>
+        <input type="file" id="masterSheet" accept=".xlsx" />
+        
+        <label for="comparisonSheet">Comparison Sheet (Subset Data)</label>
+        <input type="file" id="comparisonSheet" accept=".xlsx" />
+        
+        <button id="analyzeButton">Analyze</button>
+        
+        <h3>Results</h3>
+        <pre id="results"></pre>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <script>
+        document.getElementById('analyzeButton').addEventListener('click', async () => {
+            const masterFile = document.getElementById('masterSheet').files[0];
+            const comparisonFile = document.getElementById('comparisonSheet').files[0];
+            const resultsElement = document.getElementById('results');
+
+            if (!masterFile || !comparisonFile) {
+                resultsElement.textContent = "Please upload both files.";
+                return;
+            }
+
+            const masterData = await readExcelFile(masterFile);
+            const comparisonData = await readExcelFile(comparisonFile);
+
+            const analysisResults = analyzeData(masterData, comparisonData);
+            resultsElement.textContent = JSON.stringify(analysisResults, null, 2);
+        });
+
+        async function readExcelFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const sheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(sheet);
+                    resolve(jsonData);
+                };
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function analyzeData(masterData, comparisonData) {
+            const results = { matched: [], unmatched: [] };
+            const masterIds = new Set(masterData.map(item => item.ID));
+
+            comparisonData.forEach(item => {
+                if (masterIds.has(item.ID)) {
+                    results.matched.push(item);
+                } else {
+                    results.unmatched.push(item);
+                }
+            });
+
+            return results;
+        }
+    </script>
+</body>
+</html>
