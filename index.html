@@ -92,17 +92,21 @@
                 </thead>
                 <tbody></tbody>
             </table>
-            <h4>Unmatched Entries</h4>
-            <table id="unmatchedResults">
+            <h4>Mismatched Entries</h4>
+            <table id="mismatchedResults">
                 <thead>
                     <tr>
                         <th>ID</th>
-                        <th>Name</th>
-                        <th>Evaluation</th>
+                        <th>Expected Name</th>
+                        <th>Actual Name</th>
+                        <th>Expected Evaluation</th>
+                        <th>Actual Evaluation</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
             </table>
+            <h4>Missing IDs</h4>
+            <ul id="missingIds"></ul>
         </div>
     </div>
 
@@ -112,7 +116,8 @@
             const masterFile = document.getElementById('masterSheet').files[0];
             const comparisonFile = document.getElementById('comparisonSheet').files[0];
             const matchedResultsElement = document.getElementById('matchedResults').querySelector('tbody');
-            const unmatchedResultsElement = document.getElementById('unmatchedResults').querySelector('tbody');
+            const mismatchedResultsElement = document.getElementById('mismatchedResults').querySelector('tbody');
+            const missingIdsElement = document.getElementById('missingIds');
             const resultsContainer = document.querySelector('.results');
 
             if (!masterFile || !comparisonFile) {
@@ -124,7 +129,7 @@
             const comparisonData = await readExcelFile(comparisonFile);
 
             const analysisResults = analyzeData(masterData, comparisonData);
-            displayResults(analysisResults, matchedResultsElement, unmatchedResultsElement);
+            displayResults(analysisResults, matchedResultsElement, mismatchedResultsElement, missingIdsElement);
             resultsContainer.style.display = 'block';
         });
 
@@ -145,40 +150,75 @@
         }
 
         function analyzeData(masterData, comparisonData) {
-            const results = { matched: [], unmatched: [] };
-            const masterIds = new Set(masterData.map(item => item.ID));
+            const results = {
+                matched: [],
+                mismatched: [],
+                missingIds: []
+            };
+            const masterMap = new Map();
+
+            // Create a map for the master data for quick lookup
+            masterData.forEach(item => {
+                masterMap.set(item.ID, item);
+            });
 
             comparisonData.forEach(item => {
-                if (masterIds.has(item.ID)) {
-                    results.matched.push(item);
+                const masterEntry = masterMap.get(item.ID);
+                if (masterEntry) {
+                    // Check for match or mismatch
+                    if (masterEntry.Name === item.Name && masterEntry['Evaluation '] === item['Evaluation ']) {
+                        results.matched.push(item);
+                    } else {
+                        results.mismatched.push({
+                            ID: item.ID,
+                            expectedName: masterEntry.Name,
+                            actualName: item.Name,
+                            expectedEvaluation: masterEntry['Evaluation '],
+                            actualEvaluation: item['Evaluation ']
+                        });
+                    }
                 } else {
-                    results.unmatched.push(item);
+                    results.missingIds.push(item.ID);
                 }
             });
 
             return results;
         }
 
-        function displayResults(results, matchedResultsElement, unmatchedResultsElement) {
+        function displayResults(results, matchedResultsElement, mismatchedResultsElement, missingIdsElement) {
             // Clear previous results
             matchedResultsElement.innerHTML = '';
-            unmatchedResultsElement.innerHTML = '';
+            mismatchedResultsElement.innerHTML = '';
+            missingIdsElement.innerHTML = '';
 
             // Display matched results
             results.matched.forEach(item => {
                 const row = matchedResultsElement.insertRow();
                 row.insertCell(0).textContent = item.ID;
                 row.insertCell(1).textContent = item.Name;
-                row.insertCell(2).textContent = item['Evaluation ']; // Note: Adjust the key if needed
+                row.insertCell(2).textContent = item['Evaluation ']; // Adjust the key if needed
             });
 
-            // Display unmatched results
-            results.unmatched.forEach(item => {
-                const row = unmatchedResultsElement.insertRow();
+            // Display mismatched results
+            results.mismatched.forEach(item => {
+                const row = mismatchedResultsElement.insertRow();
                 row.insertCell(0).textContent = item.ID;
-                row.insertCell(1).textContent = item.Name;
-                row.insertCell(2).textContent = item['Evaluation ']; // Note: Adjust the key if needed
+                row.insertCell(1).textContent = item.expectedName;
+                row.insertCell(2).textContent = item.actualName;
+                row.insertCell(3).textContent = item.expectedEvaluation;
+                row.insertCell(4).textContent = item.actualEvaluation;
             });
+
+            // Display missing IDs
+            if (results.missingIds.length === 0) {
+                missingIdsElement.innerHTML = '<li>None</li>';
+            } else {
+                results.missingIds.forEach(id => {
+                    const li = document.createElement('li');
+                    li.textContent = id;
+                    missingIdsElement.appendChild(li);
+                });
+            }
         }
     </script>
 </body>
